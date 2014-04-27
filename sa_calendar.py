@@ -4,7 +4,7 @@ import os
 import re
 from datetime import datetime
 
-import times
+import pytz
 import requests
 import lxml.html
 from flask import Flask
@@ -37,14 +37,14 @@ def calendar():
     cal.add('summary', 'Student Agency')
 
     for tr in dom.xpath("//tr[contains(@class, 'reservation')]"):
-        dt = ' '.join([
+        dt_string = ' '.join([
             re.sub(r'[^\d\.]', '', tr[1].text_content()),
             re.sub(r'[^\d:]', '', tr[2].text_content()),
         ])
-        dt = times.from_local(
-            datetime.strptime(dt, '%d.%m.%Y %H:%M'),
-            'Europe/Prague'
-        )
+        dt = datetime.strptime(
+            dt_string,
+            '%d.%m.%Y %H:%M'
+        ).replace(tzinfo=pytz.timezone('Europe/Prague'))
 
         event = Event()
         event.add('summary', tr[3].text_content())

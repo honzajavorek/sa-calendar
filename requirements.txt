@@ -2,5 +2,5 @@ icalendar
 requests
 gunicorn
 flask
-times
+pytz
 lxml
