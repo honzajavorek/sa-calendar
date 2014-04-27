@@ -2,6 +2,7 @@
 
 import os
 import re
+import urlparse
 from datetime import datetime
 
 import pytz
@@ -40,14 +41,34 @@ def parse_datetime(date_string, time_string):
     return dt.replace(tzinfo=pytz.timezone('Europe/Prague'))
 
 
+def parse_detail_url(base_url, button):
+    match = re.search(r'location\.href\s?=\s?[\'"]([^\'"]+)',
+                      button.get('onclick'))
+    parts = urlparse.urlparse(base_url)
+    return '{}://{}/{}'.format(parts.scheme, parts.netloc, match.group(1))
+
+
+def scrape_end_time(session, base_url, tr):
+    button = tr.xpath(".//*[contains(@class, 'nav_button')]//button")[0]
+    url = parse_detail_url(base_url, button)
+
+    resp = session.get(url)
+    dom = lxml.html.fromstring(resp.content)
+
+    tr = dom.xpath("//*[contains(@class, 'routePanel')]//tr")[-1]
+    return tr[2].text_content()
+
+
 def scrape_tickets(session):
     resp = session.get('https://jizdenky.studentagency.cz/Tickets?7')
     dom = lxml.html.fromstring(resp.content)
 
     for tr in dom.xpath("//tr[contains(@class, 'reservation')]"):
-        dt = parse_datetime(tr[1].text_content(), tr[2].text_content())
         yield {
-            'dtstart': dt,
+            'dtstart': parse_datetime(tr[1].text_content(),
+                                      tr[2].text_content()),
+            'dtend': parse_datetime(tr[1].text_content(),
+                                    scrape_end_time(session, resp.url, tr)),
             'summary': tr[3].text_content(),
         }
 
@@ -58,8 +79,8 @@ def build_ical(tickets):
 
     for ticket in tickets:
         event = Event()
-        event.add('summary', ticket['summary'])
-        event.add('dtstart', ticket['dtstart'])
+        for key, value in ticket.items():
+            event.add(key, value)
         cal.add_component(event)
 
     return cal.to_ical()
