@@ -2,9 +2,6 @@
 
 My personal calendar of booked [Student Agency](http://www.sa.cz) bus journeys.
 
-## Status: ACTIVE
-
-Under active development and maintenance.
 
 ## Installation
 
